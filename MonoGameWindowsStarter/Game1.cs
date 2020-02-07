@@ -10,31 +10,26 @@ namespace MonoGameWindowsStarter
     /// </summary>
     public class Game1 : Game
     {
+        const int SCREEN_WIDTH = 1042,
+                  SCREEN_HEIGHT = 700;
+
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
-
-        const int SCREEN_WIDTH = 1042,
-                  SCREEN_HEIGHT = 700,
-                  SHIP_SIZE = 200,
-                  ROCK_SIZE = 100;
+        public Random Random = new Random();
 
         Texture2D space, gameOver;
-        bool isGameOver = false;
-        
-        Texture2D ship;
-        Vector2 shipPosition;
-        int shipSpeed;
-        BoundingRectangle shipBounds;
-        
-        Texture2D rock;
-        Vector2 rockPosition;
-        Vector2 rockVelocity;
-        BoundingRectangle rockBounds;
+        bool isGameOver;
+
+        Ship ship;
+        Rock rock;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+            ship = new Ship(this);
+            rock = new Rock(this);
+            isGameOver = false;
         }
 
         /// <summary>
@@ -50,9 +45,8 @@ namespace MonoGameWindowsStarter
             graphics.PreferredBackBufferHeight = SCREEN_HEIGHT;
             graphics.ApplyChanges();
 
-            shipPosition = new Vector2(SCREEN_WIDTH/2 - SHIP_SIZE/2, SCREEN_HEIGHT);
-            rockPosition = new Vector2(0, 0);
-            rockVelocity = new Vector2((float)1, (float)1);
+            ship.Initialize();
+            rock.Initialize();
 
             base.Initialize();
         }
@@ -67,10 +61,11 @@ namespace MonoGameWindowsStarter
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here
-            ship = Content.Load<Texture2D>("ship");
             space = Content.Load<Texture2D>("space");
-            rock = Content.Load<Texture2D>("rock");
             gameOver = Content.Load<Texture2D>("game over");
+
+            ship.LoadContent(Content);
+            rock.LoadContent(Content);
         }
 
         /// <summary>
@@ -93,85 +88,25 @@ namespace MonoGameWindowsStarter
                 Exit();
 
             // TODO: Add your update logic here
-            shipSpeed = (int)gameTime.ElapsedGameTime.TotalMilliseconds;
+            ship.Update(gameTime);
+            rock.Update(gameTime);
 
-            shipBounds = new BoundingRectangle(shipPosition.X,
-                                                shipPosition.Y,
-                                                65,
-                                                65);
-
-            rockBounds = new BoundingRectangle(rockPosition.X,
-                                                rockPosition.Y,
-                                                50,
-                                                50);
-
-            if (Keyboard.GetState().IsKeyDown(Keys.Up))
-                shipPosition.Y -= shipSpeed;
-            if (Keyboard.GetState().IsKeyDown(Keys.Down))
-                shipPosition.Y += shipSpeed;
-            if (Keyboard.GetState().IsKeyDown(Keys.Left))
-                shipPosition.X -= shipSpeed;
-            if (Keyboard.GetState().IsKeyDown(Keys.Right))
-                shipPosition.X += shipSpeed;
-
-            // ship check for wall collisions
-            // top
-            if (shipPosition.Y < -75)
-                shipPosition.Y = -75;
-            // bottom
-            if (shipPosition.Y > graphics.PreferredBackBufferHeight - 125)
-                shipPosition.Y = graphics.PreferredBackBufferHeight - 125;
-            // left
-            if (shipPosition.X < -70)
-                shipPosition.X = -70;
-            // right
-            if (shipPosition.X > graphics.PreferredBackBufferWidth - 130)
-                shipPosition.X = graphics.PreferredBackBufferWidth - 130;
-
-            if (Keyboard.GetState().IsKeyDown(Keys.Space))
+            if (ship.Bounds.CollidesWith(rock.Bounds))
             {
-                rockVelocity.Y += 1;
-                rockVelocity.X += 1;
-                if (isGameOver) isGameOver = false;
-            }
-
-            rockPosition += rockVelocity;
-
-            // rock check for wall collisions
-            // top
-            if (rockPosition.Y < 0)
-            {
-                rockVelocity.Y *= -1;
-                float delta = 0 - rockPosition.Y;
-                rockPosition.Y += 2 * delta;
-            }
-            // bottom
-            if (rockPosition.Y > graphics.PreferredBackBufferHeight - ROCK_SIZE)
-            {
-                rockVelocity.Y *= -1;
-                float delta = graphics.PreferredBackBufferHeight - ROCK_SIZE - rockPosition.Y;
-                rockPosition.Y += 2 * delta;
-            }
-            // left
-            if (rockPosition.X < 0)
-            {
-                rockVelocity.X *= -1;
-                float delta = 0 - rockPosition.X;
-                rockPosition.X += 2 * delta;
-            }
-            // right
-            if (rockPosition.X > graphics.PreferredBackBufferWidth - ROCK_SIZE)
-            {
-                rockVelocity.X *= -1;
-                float delta = graphics.PreferredBackBufferWidth - ROCK_SIZE - rockPosition.X;
-                rockPosition.X += 2 * delta;
-            }
-
-            if (shipBounds.CollidesWith(rockBounds))
-            {
-                rockVelocity.X = 0;
-                rockVelocity.Y = 0;
+                rock.SoundEffect.Play();
                 isGameOver = true;
+                rock.Velocity = Vector2.Zero;
+            }
+
+            if (Keyboard.GetState().IsKeyDown(Keys.Space)
+                && isGameOver)
+            {
+                isGameOver = false;
+                rock.Velocity = new Vector2(
+                    (float)Random.NextDouble(),
+                    (float)Random.NextDouble()
+                );
+                rock.Velocity.Normalize();
             }
 
             base.Update(gameTime);
@@ -193,21 +128,8 @@ namespace MonoGameWindowsStarter
                 new Rectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT), 
                 Color.White);
 
-            // draw ship
-            spriteBatch.Draw(ship, 
-                new Rectangle((int)shipPosition.X,
-                                (int)shipPosition.Y, 
-                                SHIP_SIZE, 
-                                SHIP_SIZE),
-                Color.White);
-
-            // draw rock
-            spriteBatch.Draw(rock,
-                new Rectangle((int)rockPosition.X,
-                                (int)rockPosition.Y,
-                                ROCK_SIZE,
-                                ROCK_SIZE),
-                Color.White);
+            ship.Draw(spriteBatch);
+            rock.Draw(spriteBatch);
 
             // draw game over if game is over
             if (isGameOver)
