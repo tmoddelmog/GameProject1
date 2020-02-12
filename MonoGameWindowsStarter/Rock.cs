@@ -47,6 +47,7 @@ namespace MonoGameWindowsStarter
 
             Bounds.Center += 0.5f * (float)gameTime.ElapsedGameTime.TotalMilliseconds * Velocity;
 
+            // check for wall collisions and bounce
             if (Bounds.Center.Y < Bounds.Radius)
             {
                 Velocity.Y *= -1;

@@ -13,21 +13,25 @@ namespace MonoGameWindowsStarter
         const int SCREEN_WIDTH = 1042,
                   SCREEN_HEIGHT = 700;
 
+        const String GAME_OVER = "GAME OVER";
+        int STRING_LEN = GAME_OVER.Length;
+
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         public Random Random = new Random();
 
-        Texture2D space, gameOver;
+        Texture2D space;
+        SpriteFont spriteFont;
         bool isGameOver;
 
-        Ship ship;
+        Player player;
         Rock rock;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
-            ship = new Ship(this);
+            player = new Player(this);
             rock = new Rock(this);
             isGameOver = false;
         }
@@ -45,7 +49,7 @@ namespace MonoGameWindowsStarter
             graphics.PreferredBackBufferHeight = SCREEN_HEIGHT;
             graphics.ApplyChanges();
 
-            ship.Initialize();
+            player.Initialize();
             rock.Initialize();
 
             base.Initialize();
@@ -62,9 +66,9 @@ namespace MonoGameWindowsStarter
 
             // TODO: use this.Content to load your game content here
             space = Content.Load<Texture2D>("space");
-            gameOver = Content.Load<Texture2D>("game over");
+            spriteFont = Content.Load<SpriteFont>("defaultFont");
 
-            ship.LoadContent(Content);
+            player.LoadContent(Content);
             rock.LoadContent(Content);
         }
 
@@ -88,26 +92,43 @@ namespace MonoGameWindowsStarter
                 Exit();
 
             // TODO: Add your update logic here
-            ship.Update(gameTime);
+            player.Update(gameTime);
             rock.Update(gameTime);
 
-            if (ship.Bounds.CollidesWith(rock.Bounds))
+            // handle rock and player collision
+            if (player.Bounds.CollidesWith(rock.Bounds))
             {
                 rock.SoundEffect.Play();
-                isGameOver = true;
+
+                // set player position to center
+                player.Bounds.X = GraphicsDevice.Viewport.Width / 2 - player.Bounds.Width / 2;
+                player.Bounds.Y = GraphicsDevice.Viewport.Height / 2 - player.Bounds.Height / 2;
+
+                // stop rock and set to top left corner
                 rock.Velocity = Vector2.Zero;
+                rock.Bounds.X = rock.Bounds.Radius;
+                rock.Bounds.Y = rock.Bounds.Radius;
+
+                isGameOver = true;
             }
 
+            // restart game when space is pressed
             if (Keyboard.GetState().IsKeyDown(Keys.Space)
                 && isGameOver)
             {
-                isGameOver = false;
                 rock.Velocity = new Vector2(
                     (float)Random.NextDouble(),
                     (float)Random.NextDouble()
                 );
                 rock.Velocity.Normalize();
+                isGameOver = false;
             }
+
+            // speed up rock when left/right shift is pressed
+            if ((Keyboard.GetState().IsKeyDown(Keys.RightShift)
+                || Keyboard.GetState().IsKeyDown(Keys.LeftShift))
+                && !isGameOver)
+                rock.Velocity += new Vector2(1, 1);
 
             base.Update(gameTime);
         }
@@ -128,18 +149,22 @@ namespace MonoGameWindowsStarter
                 new Rectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT), 
                 Color.White);
 
-            ship.Draw(spriteBatch);
+            player.Draw(spriteBatch);
             rock.Draw(spriteBatch);
 
-            // draw game over if game is over
+            // draw player X and Y in right corner
+            spriteBatch.DrawString(spriteFont,
+                $"X:{player.Bounds.X} Y:{player.Bounds.Y}",
+                new Vector2(SCREEN_WIDTH - 505, 0),
+                Color.White);
+
+            // drawString game over if game is over
             if (isGameOver)
             {
-                spriteBatch.Draw(gameOver,
-                    new Rectangle((int)SCREEN_WIDTH/2 - 100,
-                                    (int)SCREEN_HEIGHT/2 - 100,
-                                    200,
-                                    200),
-                    Color.White);
+                spriteBatch.DrawString(spriteFont, 
+                    GAME_OVER, 
+                    new Vector2((GraphicsDevice.Viewport.Width / 2) - 20*STRING_LEN, GraphicsDevice.Viewport.Height / 2 ),
+                    Color.ForestGreen);
             }
 
             spriteBatch.End();
